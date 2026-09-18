@@ -100,7 +100,7 @@ npm run build
 1. Push this repository to GitHub or GitLab.
 2. Import the repository into [Vercel](https://vercel.com).
 3. Add the environment variables from `.env.local` to **Project Settings → Environment Variables**.
-4. Set `NEXT_PUBLIC_SITE_URL` to your production domain (e.g. `https://explorekar.com`).
+4. Set `NEXT_PUBLIC_SITE_URL` to your production domain (e.g., `https://explorekar.com`).
 5. In your Supabase Dashboard under **Authentication → URL Configuration**, add:
    - Site URL: `https://your-domain.com`
    - Redirect URLs: `https://your-domain.com/auth/confirm` and `https://your-domain.com/account/saved`
