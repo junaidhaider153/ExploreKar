@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body {
+  background-color: theme("colors.paper.DEFAULT");
+  color: theme("colors.ink.DEFAULT");
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*:focus-visible {
+  outline: 2px solid theme("colors.brass.DEFAULT");
+  outline-offset: 2px;
+}
+
+/* Glassmorphism primitives */
+.glass-nav {
+  background: rgba(251, 252, 246, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(216, 221, 203, 0.7);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(216, 221, 203, 0.8);
+}
+
+.glass-hud {
+  background: rgba(17, 22, 20, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fafbf6;
+}
+
+/* Drafting grid backdrop */
+.grid-field {
+  background-image:
+    linear-gradient(theme("colors.line.DEFAULT") 1px, transparent 1px),
+    linear-gradient(90deg, theme("colors.line.DEFAULT") 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-color: theme("colors.paper.DEFAULT");
+}
+
+.dot-field {
+  background-image: radial-gradient(rgba(17, 22, 20, 0.12) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Camera viewfinder corner brackets */
+.viewfinder-frame {
+  position: relative;
+}
+
+.viewfinder-frame::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 24px;
+  height: 24px;
+  border-top: 3px solid theme("colors.brass.DEFAULT");
+  border-left: 3px solid theme("colors.brass.DEFAULT");
+  pointer-events: none;
+  z-index: 10;
+}
+
+.viewfinder-frame::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  border-bottom: 3px solid theme("colors.brass.DEFAULT");
+  border-right: 3px solid theme("colors.brass.DEFAULT");
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: theme("colors.paper.dark");
+}
+
+::-webkit-scrollbar-thumb {
+  background: theme("colors.line.dark");
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: theme("colors.brass.DEFAULT");
+}
