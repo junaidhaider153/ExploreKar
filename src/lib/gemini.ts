@@ -7,14 +7,23 @@ export type RoomAnalysisResult = {
   dominant_colors: string[];
   color_palette?: string[];
   notes: string;
+  is_fallback?: boolean;
 };
 
+// Used when GEMINI_API_KEY is missing (or the API call fails) so the app
+// still shows *something* rather than an empty results page. Previously this
+// looked identical to a real analysis with no signal it wasn't — every user
+// without a working key silently got told their room was a "minimal,
+// warm-neutral living room" regardless of their photo. `is_fallback: true`
+// lets calling code show an honest "general picks" message instead of
+// presenting this as a personalized read of the user's actual room.
 const FALLBACK: RoomAnalysisResult = {
   room_type: "living-room",
   style_tags: ["minimal", "warm-neutral", "modern"],
   dominant_colors: ["warm-neutral", "light-wood", "cream"],
   color_palette: ["#f5f6f0", "#d48b32", "#384733"],
   notes: "A balanced contemporary space with soft natural lighting and neutral interior tones.",
+  is_fallback: true,
 };
 
 const PROMPT = `You are an expert architectural interior designer analyzing a room photo.

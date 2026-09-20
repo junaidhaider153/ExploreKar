@@ -122,7 +122,10 @@ create policy "users manage their own rooms" on public.rooms
 create table if not exists public.room_placements (
   id uuid primary key default gen_random_uuid(),
   room_id uuid not null references public.rooms(id) on delete cascade,
-  product_id uuid not null references public.products(id) on delete cascade,
+  -- TEXT, not a strict FK to products(id): a placement can be for a curated/
+  -- demo catalog item that has no row in `products` at all. Same trade-off
+  -- already made for wishlists.product_id — see that table's comment.
+  product_id text not null,
   -- normalized 0..1 canvas coordinates + transform, so it's resolution-independent
   x numeric not null default 0.5,
   y numeric not null default 0.5,

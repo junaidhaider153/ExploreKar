@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
 import { siteUrl } from "@/lib/site";
+import { safeJsonLd } from "@/lib/json-ld";
 import "./globals.css";
 
 const display = Plus_Jakarta_Sans({
@@ -92,7 +93,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       </head>
       <body className="font-body min-h-screen flex flex-col bg-paper text-ink selection:bg-brass-light selection:text-ink">

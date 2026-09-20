@@ -8,7 +8,7 @@ import { scoreProducts } from "@/lib/recommend";
 import { CURATED_PRODUCTS } from "@/lib/catalog-data";
 import { DEMO_ROOMS } from "@/lib/demo-rooms";
 import { ProductCard } from "@/components/ProductCard";
-import { RoomPreviewCanvas } from "@/components/RoomPreviewCanvas";
+import { RoomPreviewCanvas, type PlacedItem } from "@/components/RoomPreviewCanvas";
 
 export default function GuestRoomResultsPage() {
   const searchParams = useSearchParams();
@@ -23,6 +23,30 @@ export default function GuestRoomResultsPage() {
     colorPalette?: string[];
     notes?: string;
   } | null>(null);
+
+  // Restore a previously saved guest look, if one exists. Previously
+  // saveRoomLook() wrote to this localStorage key but nothing ever read it
+  // back — every "Save Room Look" as a guest was a dead end. There's no
+  // roomId to key this by for guests (single global key, by design — a
+  // guest has one session, not multiple named rooms), so this restores
+  // whatever was last saved on any guest results page. Read in useEffect
+  // (not during render) so the server-rendered HTML and the client's first
+  // render match, then hydrate afterward — a synchronous localStorage read
+  // during render would produce different output on the server vs. client
+  // and trigger a hydration mismatch.
+  const [savedItems, setSavedItems] = useState<PlacedItem[] | undefined>(undefined);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("explorekar_saved_look");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) setSavedItems(parsed);
+      }
+    } catch (e) {
+      console.error("Could not read saved guest room look:", e);
+    }
+  }, []);
 
   useEffect(() => {
     // 1. Check if user clicked a demo room
@@ -205,6 +229,9 @@ export default function GuestRoomResultsPage() {
               productId={featuredCurated.id}
               productImageUrl={featuredCurated.imageUrl}
               productTitle={featuredCurated.title}
+              initialPriceCents={featuredCurated.price_cents}
+              initialCurrency={featuredCurated.currency}
+              initialItems={savedItems}
             />
           </div>
         </section>

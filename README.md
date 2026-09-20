@@ -68,7 +68,9 @@ NEXT_PUBLIC_WHATSAPP_NUMBER=923001234567
 1. In your Supabase project dashboard, navigate to the **SQL Editor**.
 2. Run `supabase/schema.sql` (creates `categories`, `products`, `rooms`, `room_analyses`, `placements`, and storage buckets).
 3. Run `supabase/wishlists-migration.sql` (creates `wishlists` table with RLS).
-4. (Optional) Run the seed script to populate sample catalog items:
+4. Run `supabase/rate-limit-migration.sql` (creates `api_rate_limit_events` — required for `/api/analyze-room` to work; without this table the route's rate-limit check will error).
+5. If you're upgrading an existing project created before this Phase 0 pass, also run `supabase/room-placements-product-id-migration.sql` (relaxes `room_placements.product_id` from a strict FK to TEXT — fresh projects get this directly from `schema.sql` already).
+6. (Optional) Run the seed script to populate sample catalog items:
 ```bash
 npm run seed
 ```
@@ -100,7 +102,7 @@ npm run build
 1. Push this repository to GitHub or GitLab.
 2. Import the repository into [Vercel](https://vercel.com).
 3. Add the environment variables from `.env.local` to **Project Settings → Environment Variables**.
-4. Set `NEXT_PUBLIC_SITE_URL` to your production domain (e.g. `https://explorekar.com`).
+4. Set `NEXT_PUBLIC_SITE_URL` to your production domain (e.g., `https://explorekar.com`).
 5. In your Supabase Dashboard under **Authentication → URL Configuration**, add:
    - Site URL: `https://your-domain.com`
    - Redirect URLs: `https://your-domain.com/auth/confirm` and `https://your-domain.com/account/saved`

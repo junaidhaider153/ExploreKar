@@ -16,8 +16,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (data && data.length > 0) {
       dbProducts = data;
     }
-  } catch {
-    // Database fallback
+  } catch (err) {
+    // See catalog/page.tsx for why this is logged rather than swallowed.
+    console.error("Sitemap: failed to load products from Supabase, using curated fallback:", err);
   }
 
   // Combine database products with curated fallback items (deduped by slug)

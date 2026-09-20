@@ -44,7 +44,13 @@ export default async function CatalogPage() {
         tags: p.tags,
       }));
     }
-  } catch {
+  } catch (err) {
+    // Previously silent — a real DB failure here looked identical to "just
+    // no products yet", so a misconfigured key or a timeout was invisible
+    // in Vercel's logs. Logging it doesn't fix the underlying failure, but
+    // it makes it diagnosable instead of a mystery "why is it showing demo
+    // data" report.
+    console.error("Catalog: failed to load products from Supabase, using curated fallback:", err);
     // If Supabase is unseeded, fallback to curated dataset
   }
 

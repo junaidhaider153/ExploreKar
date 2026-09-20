@@ -12,6 +12,8 @@ export type Product = {
   currency: string;
   primary_image_path: string;
   tags: string[];
+  /** Pre-resolved image URL, when the caller already has one (e.g. curated catalog items). Falls back to primary_image_path + productImageUrl() when absent. */
+  imageUrl?: string;
 };
 
 export type RoomAnalysis = {

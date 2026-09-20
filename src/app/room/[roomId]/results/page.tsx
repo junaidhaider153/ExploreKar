@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { productImageUrl } from "@/lib/storage";
 import { scoreProducts } from "@/lib/recommend";
 import { ProductCard } from "@/components/ProductCard";
-import { RoomPreviewCanvas } from "@/components/RoomPreviewCanvas";
+import { RoomPreviewCanvas, type PlacedItem } from "@/components/RoomPreviewCanvas";
 import { CURATED_PRODUCTS } from "@/lib/catalog-data";
 
 export default async function RoomResultsPage({
@@ -22,23 +22,30 @@ export default async function RoomResultsPage({
   } = await supabase.auth.getUser();
   if (!user) notFound();
 
-  const { data: room } = await supabase
-    .from("rooms")
-    .select("id, image_path, room_type, style_tags, dominant_colors, analysis_status, notes:analysis_raw")
-    .eq("id", params.roomId)
-    .single();
+  // The room row and the product list don't depend on each other, so fetch
+  // them in parallel rather than one after another — on the previous version
+  // four separate round trips ran in sequence here and their latencies just
+  // added up.
+  const [{ data: room }, { data: dbProducts }] = await Promise.all([
+    supabase
+      .from("rooms")
+      .select("id, image_path, room_type, style_tags, dominant_colors, analysis_status, analysis_raw")
+      .eq("id", params.roomId)
+      .single(),
+    supabase
+      .from("products")
+      .select("id, slug, title, price_cents, currency, primary_image_path, tags")
+      .eq("is_active", true),
+  ]);
   if (!room) notFound();
 
-  const { data: signedPhoto } = await supabase.storage
+  // The signed photo URL depends on `room`, so it can't join the Promise.all
+  // above, but it can still run alongside the saved-placements fetch below.
+  const signedPhotoPromise = supabase.storage
     .from("room-photos")
     .createSignedUrl(room.image_path, 60 * 60 * 24);
 
-  const { data: dbProducts } = await supabase
-    .from("products")
-    .select("id, slug, title, price_cents, currency, primary_image_path, tags")
-    .eq("is_active", true);
-
-  // Fallback to curated catalog products if empty
+  // Fallback to curated catalog products if the DB catalog is empty
   const catalogList = dbProducts && dbProducts.length > 0
     ? dbProducts.map((p) => ({
         ...p,
@@ -65,25 +72,69 @@ export default async function RoomResultsPage({
     ? ranked.find((p) => p.slug === searchParams.product) ?? ranked[0]
     : ranked[0];
 
-  let existingPlacement:
-    | { x: number; y: number; scale: number; rotationDeg: number }
-    | undefined;
-  if (featured) {
-    const { data: placementRow } = await supabase
+  const [{ data: signedPhoto }, { data: placementRows }] = await Promise.all([
+    signedPhotoPromise,
+    supabase
       .from("room_placements")
-      .select("x, y, scale, rotation_deg")
-      .eq("room_id", room.id)
-      .eq("product_id", featured.id)
-      .maybeSingle();
-    if (placementRow) {
-      existingPlacement = {
-        x: Number(placementRow.x),
-        y: Number(placementRow.y),
-        scale: Number(placementRow.scale),
-        rotationDeg: Number(placementRow.rotation_deg),
-      };
-    }
-  }
+      .select("product_id, x, y, scale, rotation_deg")
+      .eq("room_id", room.id),
+  ]);
+
+  // Restore every saved placement for this room, not just the one for the
+  // "featured" product — previously only a single placement was ever
+  // fetched/restored here, so a multi-item saved look silently lost every
+  // item but one on reload.
+  const restoredItems: PlacedItem[] = (placementRows ?? []).flatMap((placement, index) => {
+    const match = catalogList.find(
+      (p) => p.id === placement.product_id || p.slug === placement.product_id,
+    );
+    if (!match) return []; // a placement for a product no longer in the catalog — skip rather than crash
+    return [
+      {
+        instanceId: `restored-${index}`,
+        productId: match.id,
+        title: match.title,
+        imageUrl: match.imageUrl,
+        priceCents: match.price_cents,
+        currency: match.currency,
+        x: Number(placement.x),
+        y: Number(placement.y),
+        scale: Number(placement.scale),
+        rotationDeg: Number(placement.rotation_deg),
+        isFlipped: false,
+        shadowIntensity: 0.4,
+        zIndex: index + 10,
+      },
+    ];
+  });
+
+  // If the user arrived via a deep link to a specific product (?product=slug)
+  // and that product isn't already among the restored placements, add it
+  // fresh — using its real price, not a hardcoded placeholder.
+  const initialItems =
+    featured && !restoredItems.some((item) => item.productId === featured.id)
+      ? [
+          ...restoredItems,
+          {
+            instanceId: "featured-new",
+            productId: featured.id,
+            title: featured.title,
+            imageUrl: featured.imageUrl ?? productImageUrl(featured.primary_image_path),
+            priceCents: featured.price_cents,
+            currency: featured.currency,
+            x: 0.5,
+            y: 0.6,
+            scale: 1,
+            rotationDeg: 0,
+            isFlipped: false,
+            shadowIntensity: 0.4,
+            zIndex: restoredItems.length + 10,
+          },
+        ]
+      : restoredItems;
+
+  const isFallbackAnalysis = Boolean((room.analysis_raw as { is_fallback?: boolean } | null)?.is_fallback);
+  const aiNotes = (room.analysis_raw as { notes?: string } | null)?.notes;
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-10">
@@ -111,9 +162,19 @@ export default async function RoomResultsPage({
                 ? `${room.room_type.replace("-", " ")} Studio`
                 : "Reading your space…"}
             </h1>
-            <p className="mt-1.5 text-xs sm:text-sm text-ink-muted max-w-xl leading-relaxed">
-              Drag, scale, and layer pieces in your room. When satisfied, save the placement or export a high-res snapshot.
-            </p>
+            {isFallbackAnalysis ? (
+              <p className="mt-1.5 text-xs sm:text-sm text-ink-muted max-w-xl leading-relaxed">
+                We couldn&apos;t run AI analysis on this photo, so here are general picks instead of a personalized read of your room.
+              </p>
+            ) : aiNotes ? (
+              <p className="mt-1.5 text-xs sm:text-sm text-ink-muted max-w-xl leading-relaxed">
+                &ldquo;{aiNotes}&rdquo;
+              </p>
+            ) : (
+              <p className="mt-1.5 text-xs sm:text-sm text-ink-muted max-w-xl leading-relaxed">
+                Drag, scale, and layer pieces in your room. When satisfied, save the placement or export a high-res snapshot.
+              </p>
+            )}
           </div>
 
           {/* Detected Style Badges */}
@@ -176,9 +237,11 @@ export default async function RoomResultsPage({
               roomId={room.id}
               roomPhotoUrl={signedPhoto.signedUrl}
               productId={featured.id}
-              productImageUrl={(featured as any).imageUrl || productImageUrl(featured.primary_image_path)}
+              productImageUrl={featured.imageUrl ?? productImageUrl(featured.primary_image_path)}
               productTitle={featured.title}
-              initialPlacement={existingPlacement}
+              initialPriceCents={featured.price_cents}
+              initialCurrency={featured.currency}
+              initialItems={initialItems}
               availableProducts={catalogList}
             />
           </div>
@@ -213,7 +276,7 @@ export default async function RoomResultsPage({
                 title: p.title,
                 price_cents: p.price_cents,
                 currency: p.currency,
-                imageUrl: (p as any).imageUrl || productImageUrl(p.primary_image_path),
+                imageUrl: p.imageUrl ?? productImageUrl(p.primary_image_path),
                 matchReasons: p.matchReasons,
               }}
             />

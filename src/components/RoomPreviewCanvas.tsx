@@ -42,6 +42,17 @@ export type PlacedItem = {
   zIndex: number;
 };
 
+/** Shape shared by both CURATED_PRODUCTS entries and DB product rows, as passed into the "add more pieces" tray. */
+export type CuratedLikeProduct = {
+  id: string;
+  slug: string;
+  title: string;
+  imageUrl?: string;
+  primary_image_path?: string;
+  price_cents?: number;
+  currency?: string;
+};
+
 export function RoomPreviewCanvas({
   roomId,
   roomPhotoUrl,
@@ -49,6 +60,9 @@ export function RoomPreviewCanvas({
   productImageUrl,
   productTitle,
   initialPlacement,
+  initialPriceCents = 0,
+  initialCurrency = "PKR",
+  initialItems,
   availableProducts = CURATED_PRODUCTS,
 }: {
   roomId: string;
@@ -57,13 +71,22 @@ export function RoomPreviewCanvas({
   productImageUrl?: string;
   productTitle?: string;
   initialPlacement?: { x: number; y: number; scale: number; rotationDeg: number };
-  availableProducts?: any[];
+  /** Real price for the single-item fallback path below — previously hardcoded to 4500000 (Rs. 45,000) regardless of the actual product. */
+  initialPriceCents?: number;
+  initialCurrency?: string;
+  /** Pre-hydrated multi-item state, e.g. restoring every saved placement for a room rather than just one. Takes priority over the single-item props above. */
+  initialItems?: PlacedItem[];
+  availableProducts?: CuratedLikeProduct[];
 }) {
   const { showToast } = useToast();
   const supabase = createClient();
 
-  // Initialize items array with primary product if provided
+  // Initialize items array: prefer a fully pre-hydrated set (e.g. restoring
+  // every placement saved for this room), falling back to a single item
+  // built from the individual product props (e.g. a fresh "preview this in
+  // your room" deep link with nothing saved yet).
   const [items, setItems] = useState<PlacedItem[]>(() => {
+    if (initialItems && initialItems.length > 0) return initialItems;
     if (productId && productImageUrl && productTitle) {
       return [
         {
@@ -71,8 +94,8 @@ export function RoomPreviewCanvas({
           productId,
           title: productTitle,
           imageUrl: productImageUrl,
-          priceCents: 4500000,
-          currency: "PKR",
+          priceCents: initialPriceCents,
+          currency: initialCurrency,
           x: initialPlacement?.x ?? 0.5,
           y: initialPlacement?.y ?? 0.6,
           scale: initialPlacement?.scale ?? 1,
@@ -152,12 +175,12 @@ export function RoomPreviewCanvas({
   };
 
   // Add a new piece from the tray
-  const addPieceToRoom = (product: any) => {
+  const addPieceToRoom = (product: CuratedLikeProduct) => {
     const newItem: PlacedItem = {
       instanceId: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       productId: product.id || product.slug,
       title: product.title,
-      imageUrl: product.imageUrl || product.primary_image_path,
+      imageUrl: product.imageUrl || product.primary_image_path || "/placeholder-product.svg",
       priceCents: product.price_cents || 0,
       currency: product.currency || "PKR",
       x: 0.45 + (items.length % 3) * 0.05,
@@ -222,27 +245,57 @@ export function RoomPreviewCanvas({
       } = await supabase.auth.getUser();
 
       if (user && roomId !== "guest-session") {
-        // Save all placements to Supabase
-        for (const item of items) {
-          await supabase.from("room_placements").upsert(
-            {
-              room_id: roomId,
-              product_id: item.productId,
-              x: item.x,
-              y: item.y,
-              scale: item.scale,
-              rotation_deg: item.rotationDeg,
-            },
-            { onConflict: "room_id,product_id" }
+        // Save all placements to Supabase. Previously this looped without
+        // checking each upsert's error, so a failure (e.g. an RLS or network
+        // issue) was silently swallowed and reported as success regardless.
+        // room_placements.product_id is TEXT with no FK (see
+        // supabase/room-placements-product-id-migration.sql), so curated/
+        // demo items can be saved too — this used to fail every time for
+        // those specifically, for exactly that reason.
+        const results = await Promise.all(
+          items.map((item) =>
+            supabase.from("room_placements").upsert(
+              {
+                room_id: roomId,
+                product_id: item.productId,
+                x: item.x,
+                y: item.y,
+                scale: item.scale,
+                rotation_deg: item.rotationDeg,
+              },
+              { onConflict: "room_id,product_id" },
+            ),
+          ),
+        );
+
+        const failures = results.filter((r) => r.error);
+        if (failures.length > 0) {
+          console.error(
+            "Failed to save some room placements:",
+            failures.map((f) => f.error?.message),
           );
         }
-        showToast("Room layout saved to your account!", "success");
+
+        // Always also keep a local copy so a save is never lost outright —
+        // useful if a later Supabase write partially fails or the user goes
+        // offline mid-save.
+        if (typeof window !== "undefined") {
+          localStorage.setItem("explorekar_saved_look", JSON.stringify(items));
+        }
+
+        if (failures.length === 0) {
+          showToast("Room layout saved to your account!", "success");
+        } else if (failures.length < items.length) {
+          showToast(`Saved ${items.length - failures.length} of ${items.length} pieces — one or two didn't sync.`, "info");
+        } else {
+          showToast("Could not save to your account — kept a local copy instead.", "error");
+        }
       } else {
         // Save guest look in localStorage
         if (typeof window !== "undefined") {
           localStorage.setItem("explorekar_saved_look", JSON.stringify(items));
         }
-        showToast("Room design saved to session!", "success");
+        showToast("Room design saved to this browser — sign in to keep it permanently.", "success");
       }
     } catch (err) {
       console.error("Failed to save room placements:", err);
@@ -599,7 +652,7 @@ export function RoomPreviewCanvas({
                   {prod.title}
                 </h5>
                 <p className="text-[11px] font-bold text-ink-muted">
-                  {formatPrice(prod.price_cents, prod.currency || "PKR")}
+                  {formatPrice(prod.price_cents ?? 0, prod.currency || "PKR")}
                 </p>
               </div>
             ))}

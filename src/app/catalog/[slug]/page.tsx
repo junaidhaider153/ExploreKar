@@ -13,6 +13,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { productImageUrl } from "@/lib/storage";
 import { formatPrice } from "@/lib/format";
+import { safeJsonLd } from "@/lib/json-ld";
 import { CURATED_PRODUCTS } from "@/lib/catalog-data";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
@@ -49,8 +50,9 @@ async function getProductData(slug: string) {
         imageUrl: productImageUrl(product.primary_image_path),
       };
     }
-  } catch {
-    // Fallback if db is unavailable
+  } catch (err) {
+    // See catalog/page.tsx for why this is logged rather than swallowed.
+    console.error(`Product detail: failed to load "${slug}" from Supabase, using curated fallback:`, err);
   }
 
   // Fallback to curated catalog
@@ -139,7 +141,7 @@ export default async function ProductDetailPage({ params }: Props) {
       {/* Inject JSON-LD Script */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       {/* Breadcrumbs */}

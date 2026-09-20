@@ -230,7 +230,7 @@ export default async function SavedPage() {
               No rooms saved yet
             </h3>
             <p className="mt-2 text-sm text-ink-muted max-w-sm mx-auto">
-              Upload a photo of your room and we'll analyse it, then match furniture to your style.
+              Upload a photo of your room and we&apos;ll analyse it, then match furniture to your style.
             </p>
             <Link
               href="/room"

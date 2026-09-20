@@ -68,12 +68,12 @@ export default function HomePage() {
                 <span className="relative z-10 text-brass">before</span>
                 <span className="absolute -bottom-1 left-0 h-3 w-full rounded-sm bg-brass/15 -z-0" />
               </span>{" "}
-              it's in your cart.
+              it&apos;s in your cart.
             </h1>
 
             <p className="mt-6 max-w-md text-base leading-relaxed text-ink/70 sm:text-lg">
               Photograph the space you want to furnish. We match handcrafted
-              furniture to your room's existing style — so you're not guessing
+              furniture to your room&apos;s existing style — so you&apos;re not guessing
               from a catalog thumbnail.
             </p>
 
