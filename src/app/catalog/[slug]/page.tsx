@@ -10,7 +10,7 @@ import {
   Truck,
   Ruler,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { productImageUrl } from "@/lib/storage";
 import { formatPrice } from "@/lib/format";
 import { safeJsonLd } from "@/lib/json-ld";
@@ -18,13 +18,18 @@ import { CURATED_PRODUCTS } from "@/lib/catalog-data";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductDetailClient } from "@/components/ProductDetailClient";
 
+// Was silently ignored before this page used the anon/cacheable Supabase
+// client — the cookie-bound client forces fully dynamic rendering
+// regardless of what's exported here, so this had no effect until now.
+export const revalidate = 60;
+
 type Props = {
   params: { slug: string };
 };
 
 // Helper to fetch product from Supabase or Fallback
 async function getProductData(slug: string) {
-  const supabase = createClient();
+  const supabase = createPublicClient();
   try {
     const { data: product } = await supabase
       .from("products")
@@ -205,6 +210,7 @@ export default async function ProductDetailPage({ params }: Props) {
             productTitle={product.title}
             productPriceCents={product.price_cents}
             productCurrency={product.currency}
+            productImageUrl={product.imageUrl}
           />
 
           {/* Real-World Spatial Dimensions Breakdown */}

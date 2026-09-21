@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Camera, Grid, Menu, X, User as UserIcon, LogOut, ArrowRight, Heart } from "lucide-react";
+import { Camera, Grid, Menu, X, User as UserIcon, LogOut, Heart, ShieldCheck, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useCart } from "@/lib/useCart";
 import type { User } from "@supabase/supabase-js";
 
 export function Navbar() {
@@ -13,6 +14,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const supabase = createClient();
+  const { itemCount } = useCart();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -42,8 +44,8 @@ export function Navbar() {
   }, [pathname]);
 
   const navLinks = [
-    { href: "/catalog", label: "Catalog", icon: Grid },
-    { href: "/room", label: "AI Visualizer", icon: Camera },
+    { href: "/catalog", label: "Shop", icon: Grid },
+    { href: "/room", label: "Room Visualizer", icon: Camera },
   ];
 
   return (
@@ -94,18 +96,35 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right side CTA & Auth */}
+        {/* Right side: Cart + Account */}
         <div className="hidden md:flex items-center gap-3">
           <Link
-            href="/room"
-            className="flex items-center gap-2 rounded-full bg-ink px-4 py-2 font-display text-xs font-semibold text-flash hover:bg-moss transition-colors shadow-sm"
+            href="/cart"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:text-ink hover:bg-paper-dark/60 transition-colors"
+            aria-label={`Cart${itemCount > 0 ? `, ${itemCount} items` : ""}`}
           >
-            <span>Scan Your Room</span>
-            <ArrowRight className="h-3.5 w-3.5 text-brass" />
+            <ShoppingBag className="h-5 w-5" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brass px-1 text-[10px] font-bold text-ink">
+                {itemCount > 9 ? "9+" : itemCount}
+              </span>
+            )}
           </Link>
-
           {user ? (
             <div className="flex items-center gap-2 pl-2 border-l border-line">
+              {/* Real access control is server-side (requireAdmin() on every
+                  /admin route/action) — this link is shown to any signed-in
+                  user rather than checking ADMIN_EMAILS here, since that's a
+                  server-only env var this client component can't read. A
+                  non-admin who clicks it is redirected, not granted access. */}
+              <Link
+                href="/admin"
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-soft hover:text-ink hover:bg-paper-dark/60 transition-colors"
+                title="Admin"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-moss" />
+                <span>Admin</span>
+              </Link>
               <Link
                 href="/account/saved"
                 className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-ink-soft hover:text-ink hover:bg-paper-dark/60 transition-colors"
@@ -172,17 +191,39 @@ export function Navbar() {
               );
             })}
 
+            <Link
+              href="/cart"
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+                pathname === "/cart" ? "bg-ink text-flash" : "text-ink hover:bg-paper-dark"
+              }`}
+            >
+              <ShoppingBag className={`h-4 w-4 ${pathname === "/cart" ? "text-brass" : "text-ink-muted"}`} />
+              Cart
+              {itemCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brass px-1.5 text-[11px] font-bold text-ink">
+                  {itemCount}
+                </span>
+              )}
+            </Link>
+
             <div className="pt-4 border-t border-line flex flex-col gap-2">
               <Link
-                href="/room"
+                href="/catalog"
                 className="flex items-center justify-center gap-2 rounded-xl bg-ink px-4 py-3 font-display text-sm font-semibold text-flash"
               >
-                <Camera className="h-4 w-4 text-brass" />
-                Scan Your Room
+                <Grid className="h-4 w-4 text-brass" />
+                Shop the Collection
               </Link>
 
               {user ? (
                 <div className="flex flex-col gap-2 pt-2">
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-2 rounded-xl border border-line bg-paper-light px-4 py-2.5 text-sm font-medium text-ink hover:border-moss/40 transition-colors"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-moss" />
+                    Admin
+                  </Link>
                   <Link
                     href="/account/saved"
                     className="flex items-center gap-2 rounded-xl border border-line bg-paper-light px-4 py-2.5 text-sm font-medium text-ink hover:border-terracotta/40 transition-colors"

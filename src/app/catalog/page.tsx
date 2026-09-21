@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, Sparkles, Home, ChevronRight, Layers } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { productImageUrl } from "@/lib/storage";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { CURATED_PRODUCTS } from "@/lib/catalog-data";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CatalogPage() {
-  const supabase = createClient();
+  const supabase = createPublicClient();
   let dbProducts: ProductCardData[] = [];
 
   try {

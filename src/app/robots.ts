@@ -7,9 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // Room photos and account pages are private/user-specific — no value
-        // to a crawler and no reason to invite indexing of user data.
-        disallow: ["/room", "/account", "/admin"],
+        // Room photos, cart/checkout, orders, and account pages are
+        // private/user-specific — no value to a crawler and no reason to
+        // invite indexing of user or order data.
+        disallow: ["/room", "/account", "/admin", "/cart", "/checkout", "/order"],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

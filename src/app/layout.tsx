@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
+import { FloatingWhatsApp } from "@/components/FloatingWhatsApp";
 import { siteUrl } from "@/lib/site";
 import { safeJsonLd } from "@/lib/json-ld";
 import "./globals.css";
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
           <Footer />
+          <FloatingWhatsApp />
         </ToastProvider>
       </body>
     </html>

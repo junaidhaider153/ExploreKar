@@ -1,8 +1,10 @@
 "use client";
 
-import { Heart, MessageCircle, Camera } from "lucide-react";
+import { Heart, Camera, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useWishlist } from "@/lib/useWishlist";
+import { useCart } from "@/lib/useCart";
+import { useToast } from "@/components/Toast";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 
 interface Props {
@@ -10,6 +12,7 @@ interface Props {
   productTitle: string;
   productPriceCents: number;
   productCurrency: string;
+  productImageUrl: string;
 }
 
 export function ProductDetailClient({
@@ -17,8 +20,11 @@ export function ProductDetailClient({
   productTitle,
   productPriceCents,
   productCurrency,
+  productImageUrl,
 }: Props) {
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { addToCart } = useCart();
+  const { showToast } = useToast();
   const wishlisted = isWishlisted(productSlug);
 
   const whatsappUrl = buildWhatsAppUrl({
@@ -28,8 +34,29 @@ export function ProductDetailClient({
     slug: productSlug,
   });
 
+  const handleAddToCart = () => {
+    addToCart({
+      productId: productSlug,
+      title: productTitle,
+      priceCents: productPriceCents,
+      currency: productCurrency,
+      imageUrl: productImageUrl,
+    });
+    showToast(`Added "${productTitle}" to cart`, "success");
+  };
+
   return (
     <div className="space-y-3">
+      {/* Add to Cart — the primary path into checkout */}
+      <button
+        id={`add-to-cart-${productSlug}`}
+        onClick={handleAddToCart}
+        className="flex items-center justify-center gap-2.5 w-full rounded-full bg-ink px-6 py-3.5 font-display text-sm font-bold text-flash shadow-sm hover:bg-moss active:scale-[0.98] transition-all duration-200"
+      >
+        <ShoppingBag className="h-4 w-4 text-brass" />
+        <span>Add to Cart</span>
+      </button>
+
       {/* WhatsApp Inquiry CTA */}
       <a
         id={`whatsapp-inquiry-${productSlug}`}

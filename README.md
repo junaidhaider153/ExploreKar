@@ -62,6 +62,8 @@ GEMINI_MODEL=gemini-2.5-flash
 
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_WHATSAPP_NUMBER=923001234567
+
+ADMIN_EMAILS=you@example.com
 ```
 
 ### 4. Database Setup
@@ -69,8 +71,9 @@ NEXT_PUBLIC_WHATSAPP_NUMBER=923001234567
 2. Run `supabase/schema.sql` (creates `categories`, `products`, `rooms`, `room_analyses`, `placements`, and storage buckets).
 3. Run `supabase/wishlists-migration.sql` (creates `wishlists` table with RLS).
 4. Run `supabase/rate-limit-migration.sql` (creates `api_rate_limit_events` — required for `/api/analyze-room` to work; without this table the route's rate-limit check will error).
-5. If you're upgrading an existing project created before this Phase 0 pass, also run `supabase/room-placements-product-id-migration.sql` (relaxes `room_placements.product_id` from a strict FK to TEXT — fresh projects get this directly from `schema.sql` already).
-6. (Optional) Run the seed script to populate sample catalog items:
+5. Run `supabase/orders-migration.sql` (creates `orders` and `order_items` — required for cart/checkout to work).
+6. If you're upgrading an existing project created before this Phase 0 pass, also run `supabase/room-placements-product-id-migration.sql` (relaxes `room_placements.product_id` from a strict FK to TEXT — fresh projects get this directly from `schema.sql` already).
+7. (Optional) Run the seed script to populate sample catalog items:
 ```bash
 npm run seed
 ```
@@ -80,6 +83,42 @@ npm run seed
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view the application.
+
+### 6. Admin Access
+Product management lives at `/admin` — add/edit/hide/delete products with
+image upload, instead of hand-editing Supabase rows or relying on the
+curated fallback catalog.
+
+1. Set `ADMIN_EMAILS=you@example.com,teammate@example.com` (comma-separated,
+   already in `.env.local` if you filled in step 3).
+2. Sign up/in with one of those emails.
+3. An "Admin" link appears in the nav for any signed-in user — but access is
+   actually enforced server-side by `requireAdmin()` in `src/lib/admin.ts`,
+   checked at the top of every admin page and Server Action. A signed-in
+   user whose email isn't in `ADMIN_EMAILS` is redirected, not granted
+   access, regardless of the nav link being visible to them.
+
+### 7. Cart & Checkout
+There's no live payment integration yet, so checkout works like this:
+
+1. Add items to the cart (kept client-side in `localStorage`, no account
+   needed — see `src/lib/useCart.ts`).
+2. Checkout collects name, email, phone, and delivery address (guest
+   checkout is fully supported; a signed-in user's email is prefilled but an
+   account is never required).
+3. Submitting creates an `orders` row + `order_items` rows via a Server
+   Action (`src/app/checkout/actions.ts`), which recomputes the total
+   server-side rather than trusting whatever the client sent.
+4. The confirmation page gives the customer a pre-filled WhatsApp message
+   summarizing the order — that message is currently the actual "complete
+   my purchase" step, since there's no live payment gateway wired up.
+5. Admins see and manage every order at `/admin/orders`, including updating
+   its status (`pending` → `contacted` → `confirmed` → `fulfilled`, or
+   `cancelled`).
+
+When a real payment gateway is added later (PayFast is the natural choice,
+matching FikarNot), it slots in between steps 3 and 4 without changing the
+cart or admin pieces.
 
 ---
 

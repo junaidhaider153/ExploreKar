@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Camera, Sparkles, Heart } from "lucide-react";
+import { Camera, Sparkles, Heart, ShoppingBag } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { useWishlist } from "@/lib/useWishlist";
+import { useCart } from "@/lib/useCart";
+import { useToast } from "@/components/Toast";
 
 export type ProductCardData = {
   slug: string;
@@ -25,10 +27,25 @@ export function ProductCard({ product }: { product: ProductCardData }) {
   const [imgSrc, setImgSrc] = useState(product.imageUrl || "/placeholder-product.svg");
   const [imageLoaded, setImageLoaded] = useState(false);
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const { addToCart } = useCart();
+  const { showToast } = useToast();
 
   // Use slug as product id for guest wishlist compatibility
   const productKey = product.slug;
   const wishlisted = isWishlisted(productKey);
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addToCart({
+      productId: productKey,
+      title: product.title,
+      priceCents: product.price_cents,
+      currency: product.currency,
+      imageUrl: product.imageUrl,
+    });
+    showToast(`Added "${product.title}" to cart`, "success");
+  };
 
   const dimensionSummary = product.width_cm && product.height_cm
     ? `${product.width_cm} × ${product.height_cm} cm`
@@ -78,6 +95,16 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           <Heart
             className={`h-4 w-4 transition-transform ${wishlisted ? "fill-current" : ""}`}
           />
+        </button>
+
+        {/* Quick Add to Cart — below the wishlist heart, same corner */}
+        <button
+          id={`cart-add-${product.slug}`}
+          onClick={handleAddToCart}
+          aria-label={`Add ${product.title} to cart`}
+          className="absolute right-2.5 top-[3.25rem] z-20 flex h-8 w-8 items-center justify-center rounded-full bg-flash/80 text-ink-muted backdrop-blur-md shadow-sm transition-all duration-300 hover:bg-ink hover:text-flash hover:scale-110"
+        >
+          <ShoppingBag className="h-4 w-4" />
         </button>
 
         {/* Product Image */}

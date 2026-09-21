@@ -1,10 +1,12 @@
 import type { MetadataRoute } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { siteUrl } from "@/lib/site";
 import { CURATED_PRODUCTS } from "@/lib/catalog-data";
 
+export const revalidate = 3600; // sitemap doesn't need to be fresher than hourly
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createClient();
+  const supabase = createPublicClient();
   let dbProducts: { slug: string; created_at?: string | null }[] = [];
 
   try {
